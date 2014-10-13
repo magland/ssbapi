@@ -137,6 +137,13 @@ ssbutils.get_all_files=function(path) {
 	}
 };
 
+ssbutils.get_file_suffix=function(fname) {
+	var ind1=fname.lastIndexOf('/');
+	var ind2=fname.lastIndexOf('.');
+	if (ind2>ind1) return fname.slice(ind2+1);
+	return '';
+}
+
 ssbutils.make_random_id=function(numchars) {
 	if (!numchars) numchars=10;
 	var text = "";

@@ -77,6 +77,7 @@ function download_file(RESP,query) {
 		send_json_response(RESP,{success:false,error:'Error parsing channels or segments'});
 		return;
 	}
+	var total_num_channels=135;
 	
 	fs.open(path0, 'r', function(status, fd) {
 		if (status) {	
@@ -93,15 +94,16 @@ function download_file(RESP,query) {
 			});
 		}
 		function read_segment(ind,cb) {
-			var buffer=new Buffer(1000000*channels.length*2);
-			fs.read(fs,buffer,0,1000000*channels.length*2,1000000*channels.length*2*time_segments[ind],function(err) {
+			var buffer=new Buffer(1000000*total_num_channels*2);
+			var offset=1000000*total_num_channels*2*time_segments[ind];
+			fs.read(fd,buffer,0,1000000*total_num_channels*2,offset,function(err) {
 				if (err) {
 					finalize();
 					return;
 				}
 				for (var j=0; j<1000000; j++) {
 					for (var k=0; k<channels.length; k++) {
-						RESP.write(buffer.slice(j*channels.length*2+channels[k]*2,j*channels.length*2+(channels[k]+1)*2));
+						RESP.write(buffer.slice(j*total_num_channels*2+channels[k]*2,j*total_num_channels*2+(channels[k]+1)*2));
 					}
 				}
 				cb();
