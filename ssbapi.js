@@ -28,6 +28,9 @@ http.createServer(function (REQ,RESP) {
 		if (path0=='/ssbapi/downloadfile') {
 			download_file(RESP,url_parts.query);
 		}
+		else if (path0=='/ssbapi/downloadtmpfile') {
+			download_tmp_file(RESP,url_parts.query);
+		}
 		else if (path0=='/ssbapi/filestats') {
 			get_file_stats(url_parts.query,function(tmp) {
 				send_json_response(RESP,tmp);
@@ -53,6 +56,13 @@ function send_json_response(RESP,obj) {
 
 /* FILES **********************************************************/
 
+function download_tmp_file(RESP,query) {
+	RESP.setHeader('Content-disposition','attachment; filename='+query.file_name);
+	RESP.setHeader('Content-type','application/octet-stream');
+	var filestream=fs.createReadStream(ssbconfig.data_path+'/tmp/'+query.file_name);
+	filestream.pipe(RESP);
+}
+
 function download_file(RESP,query) {
 	var path0=ssbconfig.data_path+'/groups/'+query.group+'/projects/'+query.project+'/sessions/'+query.session+'/acquisitions/'+query.acquisition+'/files';
 	var files0=ssbutils.get_all_files(path0);
@@ -68,54 +78,78 @@ function download_file(RESP,query) {
 	}
 	path0=path0+'/'+file0;
 	
-	var channels,time_segments;
+	var channels,time_points;
 	try {
-		channels=JSON.parse(query.channels);
-		time_segments=JSON.parse(query.time_segments);
+		channels=string_to_list(query.channels);
+		time_points=string_to_list(query.time_points);
 	}
 	catch(err) {
-		send_json_response(RESP,{success:false,error:'Error parsing channels or segments'});
+		send_json_response(RESP,{success:false,error:'Error parsing channels or time points'});
 		return;
 	}
 	var total_num_channels=135;
 	
 	fs.open(path0, 'r', function(status, fd) {
+		var total_bytes_written=0;
 		if (status) {	
 			send_json_response(RESP,{success:false,error:'Error opening file: '+status.message});
 			return;
 		}
-		function read_next_segment(ind) {
-			if (ind>=time_segments.length) {
+		function read_next_time_point(ind) {
+			if (ind>=time_points.length) {
 				finalize();
 				return;
 			}
-			read_segment(ind,function() {
-				read_next_segment(ind+1);
+			read_time_point(ind,function() {
+				read_next_time_point(ind+1);
 			});
 		}
-		function read_segment(ind,cb) {
-			var buffer=new Buffer(1000000*total_num_channels*2);
-			var offset=1000000*total_num_channels*2*time_segments[ind];
-			fs.read(fd,buffer,0,1000000*total_num_channels*2,offset,function(err) {
+		function read_time_point(ind,cb) {
+			var buffer=new Buffer(total_num_channels*2);
+			var offset=total_num_channels*2*time_points[ind];
+			fs.read(fd,buffer,0,total_num_channels*2,offset,function(err,num_bytes) {
 				if (err) {
 					finalize();
 					return;
 				}
-				for (var j=0; j<1000000; j++) {
-					for (var k=0; k<channels.length; k++) {
-						RESP.write(buffer.slice(j*total_num_channels*2+channels[k]*2,j*total_num_channels*2+(channels[k]+1)*2));
-					}
+				for (var k=0; k<channels.length; k++) {
+					RESP.write(buffer.slice(channels[k]*2,channels[k]*2+2));
+					total_bytes_written+=2;
 				}
 				cb();
 			});
 		}
 		RESP.setHeader('Content-disposition','attachment; filename='+query.file_name);
 		RESP.setHeader('Content-type','application/octet-stream');
-		read_next_segment(0);
+		read_next_time_point(0);
 		function finalize() {
 			RESP.end();
 		}
 	});
+	
+	function string_to_list(str) {
+		var list1=str.split(',');
+		var ret=[];
+		for (var i in list1) {
+			var ind0=list1[i].indexOf('-');
+			if (ind0>=0) {
+				var val1=Number(list1[i].slice(0,ind0));
+				var val2=Number(list1[i].slice(ind0+1));
+				if (isNaN(val1)) return [];
+				if (isNaN(val2)) return [];
+				if (val1>val2) return [];
+				if (val1<0) return [];
+				for (var j=val1; j<=val2; j++) ret.push(j);
+			}
+			else {
+				var val=list1[i];
+				if (isNaN(val)) return [];
+				if (val<0) return [];
+				ret.push(val);
+			}
+		}
+		return ret;
+	}
 }
 function get_file_stats(query,callback) {
 	var path0=ssbconfig.data_path+'/groups/'+query.group+'/projects/'+query.project+'/sessions/'+query.session+'/acquisitions/'+query.acquisition+'/files';
