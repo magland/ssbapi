@@ -36,6 +36,34 @@ http.createServer(function (REQ,RESP) {
 				send_json_response(RESP,tmp);
 			});
 		}
+		
+		else if (path0=='/ssbapi/groups') {
+			get_groups(url_parts.query,function(tmp) {
+				send_json_response(RESP,tmp);
+			});
+		}
+		else if (path0=='/ssbapi/projects') {
+			get_projects(url_parts.query,function(tmp) {
+				send_json_response(RESP,tmp);
+			});
+		}
+		else if (path0=='/ssbapi/sessions') {
+			get_sessions(url_parts.query,function(tmp) {
+				send_json_response(RESP,tmp);
+			});
+		}
+		else if (path0=='/ssbapi/acquisitions') {
+			get_acquisitions(url_parts.query,function(tmp) {
+				send_json_response(RESP,tmp);
+			});
+		}
+		else if (path0=='/ssbapi/files') {
+			get_files(url_parts.query,function(tmp) {
+				send_json_response(RESP,tmp);
+			});
+		}
+		
+		
 		else {
 			send_json_response(RESP,{success:false,error:'Unrecognized path'});			
 		}
@@ -50,6 +78,61 @@ console.log ('Listening on port '+ssbconfig.listen_port);
 function send_json_response(RESP,obj) {
 	RESP.writeHead(200, {"Access-Control-Allow-Origin":"*", "Content-Type":"application/json"});
 	RESP.end(JSON.stringify(obj));
+}
+
+function get_groups(query,callback) {
+	var user0=current_user(query);
+	var path0=ssbconfig.data_path+'/groups';
+	var dirs=ssbutils.get_all_dirs(path0);
+	var dirs2=[];
+	for (var i in dirs) {
+		if (has_group_access(user0,dirs[i],'read')) dirs2.push(dirs[i]);
+	}
+	callback({success:true,groups:dirs2});
+}
+
+function get_projects(query,callback) {
+	var user0=current_user(query);
+	if (!has_group_access(user0,query.group,'read')) {
+		callback({success:false,error:'User '+user0+' does not have read access to '+query.group});
+		return;
+	}
+	var path0=ssbconfig.data_path+'/groups/'+query.group+'/projects';
+	var dirs=ssbutils.get_all_dirs(path0);
+	callback({success:true,projects:dirs});
+}
+
+function get_sessions(query,callback) {
+	var user0=current_user(query);
+	if (!has_group_access(user0,query.group,'read')) {
+		callback({success:false,error:'User '+user0+' does not have read access to '+query.group});
+		return;
+	}
+	var path0=ssbconfig.data_path+'/groups/'+query.group+'/projects/'+query.project+'/sessions';
+	var dirs=ssbutils.get_all_dirs(path0);
+	callback({success:true,sessions:dirs});
+}
+
+function get_acquisitions(query,callback) {
+	var user0=current_user(query);
+	if (!has_group_access(user0,query.group,'read')) {
+		callback({success:false,error:'User '+user0+' does not have read access to '+query.group});
+		return;
+	}
+	var path0=ssbconfig.data_path+'/groups/'+query.group+'/projects/'+query.project+'/sessions/'+query.session+'/acquisitions';
+	var dirs=ssbutils.get_all_dirs(path0);
+	callback({success:true,acquisitions:dirs});
+}
+
+function get_files(query,callback) {
+	var user0=current_user(query);
+	if (!has_group_access(user0,query.group,'read')) {
+		callback({success:false,error:'User '+user0+' does not have read access to '+query.group});
+		return;
+	}
+	var path0=ssbconfig.data_path+'/groups/'+query.group+'/projects/'+query.project+'/sessions/'+query.session+'/acquisitions/'+query.acquisition+'/files';
+	var files=ssbutils.get_all_files(path0);
+	callback({success:true,files:files});
 }
 
 
