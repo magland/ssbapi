@@ -80,6 +80,13 @@ function send_json_response(RESP,obj) {
 	RESP.end(JSON.stringify(obj));
 }
 
+function current_user(query) {
+	return '';
+}
+function has_group_access() {
+	return true;
+}
+
 function get_groups(query,callback) {
 	var user0=current_user(query);
 	var path0=ssbconfig.data_path+'/groups';
@@ -152,7 +159,7 @@ function download_file(RESP,query) {
 		return;
 	}
 	var path0=wdconfig.data_path+'/groups/'+query.group+'/projects/'+query.project+'/sessions/'+query.session+'/acquisitions/'+query.acquisition+'/files/'+query.file;
-	if (!wdutils.file_exists(path0)) {
+	if (!ssbutils.file_exists(path0)) {
 		send_json_response(RESP,{success:false,error:'file does not exist'});
 		return;
 	}
