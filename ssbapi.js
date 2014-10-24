@@ -158,14 +158,24 @@ function download_file(RESP,query) {
 		send_json_response(RESP,{success:false,error:'unable to serve .dat file'});
 		return;
 	}
-	var path0=wdconfig.data_path+'/groups/'+query.group+'/projects/'+query.project+'/sessions/'+query.session+'/acquisitions/'+query.acquisition+'/files/'+query.file;
+	var path0=ssbconfig.data_path+'/groups/'+query.group+'/projects/'+query.project+'/sessions/'+query.session+'/acquisitions/'+query.acquisition+'/files/'+query.file;
 	if (!ssbutils.file_exists(path0)) {
 		send_json_response(RESP,{success:false,error:'file does not exist'});
 		return;
 	}
+	
 	//RESP.writeHead(200,'application/octet-stream');
-	RESP.setHeader('Content-disposition','attachment; filename='+query.file);
-	RESP.setHeader('Content-type','application/octet-stream');
+	//RESP.setHeader('Content-disposition','attachment; filename='+query.file);
+	//RESP.setHeader('Content-type','application/octet-stream');
+
+	var headers = {};
+	// IE8 does not allow domains to be specified, just the *
+	// headers["Access-Control-Allow-Origin"] = req.headers.origin;
+	headers["Access-Control-Allow-Origin"] = "*";
+	headers["Content-disposition"]='attachment; filename='+query.file;
+	headers["Content-type"]='application/octet-stream';
+	RESP.writeHead(200, headers);
+
 	var SS=fs.createReadStream(path0);
 	SS.pipe(RESP);
 }
