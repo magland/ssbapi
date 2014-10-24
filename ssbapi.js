@@ -80,12 +80,6 @@ function send_json_response(RESP,obj) {
 	RESP.end(JSON.stringify(obj));
 }
 
-function current_user(query) {
-	return 'admin';
-}
-
-function has_group_access() {return true;};
-
 function get_groups(query,callback) {
 	var user0=current_user(query);
 	var path0=ssbconfig.data_path+'/groups';
@@ -153,92 +147,20 @@ function download_tmp_file(RESP,query) {
 }
 
 function download_file(RESP,query) {
-	var path0=ssbconfig.data_path+'/groups/'+query.group+'/projects/'+query.project+'/sessions/'+query.session+'/acquisitions/'+query.acquisition+'/files';
-	var files0=ssbutils.get_all_files(path0);
-	var file0='';
-	for (var i in files0) {
-		if (ssbutils.get_file_suffix(files0[i])=='dat') {
-			file0=files0[i];
-		}
-	}
-	if (!file0) {
-		send_json_response(RESP,{success:false,error:'Unable to find .dat file'});
+	if (ssbutils.get_file_suffix(query.file)=='dat') {
+		send_json_response(RESP,{success:false,error:'unable to serve .dat file'});
 		return;
 	}
-	path0=path0+'/'+file0;
-	
-	var channels,time_points;
-	try {
-		channels=string_to_list(query.channels);
-		time_points=string_to_list(query.time_points);
-	}
-	catch(err) {
-		send_json_response(RESP,{success:false,error:'Error parsing channels or time points'});
+	var path0=wdconfig.data_path+'/groups/'+query.group+'/projects/'+query.project+'/sessions/'+query.session+'/acquisitions/'+query.acquisition+'/files/'+query.file;
+	if (!wdutils.file_exists(path0)) {
+		send_json_response(RESP,{success:false,error:'file does not exist'});
 		return;
 	}
-	var total_num_channels=135;
-	
-	fs.open(path0, 'r', function(status, fd) {
-		var total_bytes_written=0;
-		if (status) {	
-			send_json_response(RESP,{success:false,error:'Error opening file: '+status.message});
-			return;
-		}
-		function read_next_time_point(ind) {
-			if (ind>=time_points.length) {
-				finalize();
-				return;
-			}
-			read_time_point(ind,function() {
-				read_next_time_point(ind+1);
-			});
-		}
-		function read_time_point(ind,cb) {
-			var buffer=new Buffer(total_num_channels*2);
-			var offset=total_num_channels*2*time_points[ind];
-			fs.read(fd,buffer,0,total_num_channels*2,offset,function(err,num_bytes) {
-				if (err) {
-					finalize();
-					return;
-				}
-				for (var k=0; k<channels.length; k++) {
-					RESP.write(buffer.slice(channels[k]*2,channels[k]*2+2));
-					total_bytes_written+=2;
-				}
-				cb();
-			});
-		}
-		RESP.setHeader('Content-disposition','attachment; filename='+query.file_name);
-		RESP.setHeader('Content-type','application/octet-stream');
-		read_next_time_point(0);
-		function finalize() {
-			RESP.end();
-		}
-	});
-	
-	function string_to_list(str) {
-		var list1=str.split(',');
-		var ret=[];
-		for (var i in list1) {
-			var ind0=list1[i].indexOf('-');
-			if (ind0>=0) {
-				var val1=Number(list1[i].slice(0,ind0));
-				var val2=Number(list1[i].slice(ind0+1));
-				if (isNaN(val1)) return [];
-				if (isNaN(val2)) return [];
-				if (val1>val2) return [];
-				if (val1<0) return [];
-				for (var j=val1; j<=val2; j++) ret.push(j);
-			}
-			else {
-				var val=list1[i];
-				if (isNaN(val)) return [];
-				if (val<0) return [];
-				ret.push(val);
-			}
-		}
-		return ret;
-	}
+	//RESP.writeHead(200,'application/octet-stream');
+	RESP.setHeader('Content-disposition','attachment; filename='+query.file);
+	RESP.setHeader('Content-type','application/octet-stream');
+	var SS=fs.createReadStream(path0);
+	SS.pipe(RESP);
 }
 function get_file_stats(query,callback) {
 	var path0=ssbconfig.data_path+'/groups/'+query.group+'/projects/'+query.project+'/sessions/'+query.session+'/acquisitions/'+query.acquisition+'/files';
