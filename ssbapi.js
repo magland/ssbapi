@@ -80,6 +80,12 @@ function send_json_response(RESP,obj) {
 	RESP.end(JSON.stringify(obj));
 }
 
+function current_user(query) {
+	return 'admin';
+}
+
+function has_group_access() {return true;};
+
 function get_groups(query,callback) {
 	var user0=current_user(query);
 	var path0=ssbconfig.data_path+'/groups';
