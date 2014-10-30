@@ -1,4 +1,4 @@
-var	url=require('url');
+var url=require('url');
 var http=require('http');
 var ssbconfig=require('./ssbconfig').ssbconfig;	
 var ssbutils=require('./ssbutils.js').ssbutils;
@@ -147,6 +147,7 @@ function get_files(query,callback) {
 /* FILES **********************************************************/
 
 function download_tmp_file(RESP,query) {
+	RESP.setHeader("Access-Control-Allow-Origin","*");
 	RESP.setHeader('Content-disposition','attachment; filename='+query.file_name);
 	RESP.setHeader('Content-type','application/octet-stream');
 	var filestream=fs.createReadStream(ssbconfig.data_path+'/tmp/'+query.file_name);
@@ -212,4 +213,5 @@ function compute_sha1_sum_of_file(path,callback) {
 	s.on('end',function() {callback({success:true,sha1:ret.digest('hex')});});
 	s.on('error',function(err) {callback({success:false,error:JSON.stringify(err)});});
 }
+
 
